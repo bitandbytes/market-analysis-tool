@@ -10,9 +10,6 @@ class YahooFinancePlugin(DataSourceInterface):
     def fetch_data(self, ticker: str, period: str = "5y") -> Tuple[pd.DataFrame, pd.DataFrame]:
         market_data = self._fetch_market_data(ticker, period=period)
         financials = self._fetch_financials(ticker, market_data)
-
-        print(financials)
-        print(market_data)
         
         return market_data, financials
 

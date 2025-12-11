@@ -7,13 +7,18 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QLabel, QLineEdit, QPushButton, QComboBox, QListWidget, 
                              QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox)
 from PyQt6.QtCore import Qt
-import pyqtgraph as pg
-from pyqtgraph import DateAxisItem
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.colors
+from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 from core.plugin_manager import PluginManager
 from ui.checkable_combo_box import CheckableComboBox
 
 class MainWindow(QMainWindow):
+    CHART_HEIGHT_PER_MODULE = 500
+    MAX_SUBPLOTS = 2
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Market Analysis Tool")
@@ -40,7 +45,7 @@ class MainWindow(QMainWindow):
         # Ticker Input
         ticker_file = open("ui/tickers.txt", "r")
         tickers = ticker_file.read().splitlines()
-        self.tickers = CheckableComboBox()
+        self.tickers = CheckableComboBox(placeholder_text="Select Tickers...")
         self.tickers.addItems(tickers)
         controls_layout.addWidget(self.tickers)
 
@@ -60,7 +65,7 @@ class MainWindow(QMainWindow):
 
         # Analysis Selection
         controls_layout.addWidget(QLabel("Analysis Modules:"))
-        self.analysis_combo = CheckableComboBox()
+        self.analysis_combo = CheckableComboBox(placeholder_text="Select Analysis Modules...")
         self.analysis_combo.addItems(self.plugin_manager.get_all_analysis_plugins())
         controls_layout.addWidget(self.analysis_combo)
 
@@ -76,10 +81,9 @@ class MainWindow(QMainWindow):
         self.chart_panel = QFrame()
         self.chart_layout = QVBoxLayout(self.chart_panel)
         
-        # PyQtGraph Widget
-        self.chart_widget = pg.GraphicsLayoutWidget()
-        self.chart_widget.setBackground('w') # White background
-        self.chart_layout.addWidget(self.chart_widget)
+        # WebEngineView for Plotly
+        self.browser = QWebEngineView()
+        self.chart_layout.addWidget(self.browser)
         
         splitter.addWidget(self.chart_panel)
         splitter.setSizes([300, 900])
@@ -108,14 +112,20 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Selection Error", "Please select at least one analysis module.")
             return
 
-        self.chart_widget.clear()
+        # Create Plotly Figure with Subplots
+        fig = make_subplots(rows=len(selected_analyses), cols=1, 
+                            shared_xaxes=True, 
+                            vertical_spacing=0.1,
+                            subplot_titles=selected_analyses)
+                            
+        # Colors for different tickers
+        colors = plotly.colors.qualitative.Plotly * 10
         
-        # Cache data to avoid refetching for each analysis
-        data_cache = {}
-
         self.statusBar().showMessage(f"Fetching data...")
         QApplication.processEvents()
-
+        
+        # Cache data
+        data_cache = {}
         for ticker in selected_tickers:
             try:
                 market_data, financials = data_source.fetch_data(ticker, period=period_str)
@@ -123,120 +133,57 @@ class MainWindow(QMainWindow):
                     data_cache[ticker] = (market_data, financials)
                 else:
                     print(f"Warning: No data for {ticker}")
+                    self.statusBar().showMessage(f"Warning: No data for {ticker}")
             except Exception as e:
                 print(f"Error fetching data for {ticker}: {e}")
+                self.statusBar().showMessage(f"Error fetching data for {ticker}: {e}")
 
         if not data_cache:
             QMessageBox.warning(self, "Data Error", "Could not fetch data for any selected tickers.")
             self.statusBar().showMessage("Ready")
             return
 
-        # Colors for different tickers using Seaborn
-        # Generate distinct colors
-        n_colors = max(len(data_cache), 1)
-        palette = sns.color_palette("husl", n_colors)
-        # Convert to 0-255 RGB for PyQtGraph
-        colors = [(int(r*255), int(g*255), int(b*255)) for r, g, b in palette]
-
         for i, plugin_name in enumerate(selected_analyses):
             plugin = self.plugin_manager.get_analysis_plugin(plugin_name)
             
-            # Create a plot area
-            # Use DateAxisItem for x-axis
-            axis = DateAxisItem(orientation='bottom')
-            p = self.chart_widget.addPlot(row=i, col=0, axisItems={'bottom': axis}, title=plugin_name)
-            p.showGrid(x=True, y=True)
-            p.addLegend()
-            
-            # Crosshair Lines
-            vLine = pg.InfiniteLine(angle=90, movable=False)
-            hLine = pg.InfiniteLine(angle=0, movable=False)
-            p.addItem(vLine, ignoreBounds=True)
-            p.addItem(hLine, ignoreBounds=True)
-            
-            # Store data for crosshair lookup
-            plot_data = {}
-
             for j, (ticker, (market_data, financials)) in enumerate(data_cache.items()):
                 try:
                     results = plugin.analyze(ticker, financials, market_data)
                     
-                    if "error" in results:
-                        print(f"Analysis Error ({plugin_name} - {ticker}): {results['error']}")
+                    if not results:
+                        print(f"Analysis Error ({plugin_name} - {ticker})")
+                        self.statusBar().showMessage(f"Analysis Error ({plugin_name} - {ticker})")
                         continue
                     
-                    # Plot
                     chart_data = results.get('chart_data')
                     if chart_data is not None:
-                        # Convert index (datetime) to timestamp for PyQtGraph
-                        x = [t.timestamp() for t in chart_data.index]
-                        y = chart_data.values.flatten() # Ensure 1D array
-                        
-                        color = colors[j % len(colors)]
-                        # Increased width to 3
-                        p.plot(x, y, pen=pg.mkPen(color, width=3), name=ticker)
-                        
-                        # Store for crosshair
-                        plot_data[ticker] = (x, y)
+                         # Add Trace
+                        fig.add_trace(go.Scatter(
+                            x=chart_data.index, 
+                            y=chart_data.values.flatten(),
+                            mode='lines',
+                            name=f"{ticker}",
+                            legendgroup=ticker,
+                            line=dict(color=colors[j % len(colors)]),
+                            showlegend=(i==0)
+                        ), row=i+1, col=1)
                 
                 except Exception as e:
                     print(f"Error running {plugin_name} for {ticker}: {e}")
+                    self.statusBar().showMessage(f"Error running {plugin_name} for {ticker}")
 
-            # Crosshair Mouse Move Handler
-            def mouseMoved(evt, plot=p, data=plot_data, title=plugin_name):
-                pos = evt[0]
-                if plot.sceneBoundingRect().contains(pos):
-                    mousePoint = plot.vb.mapSceneToView(pos)
-                    index = int(mousePoint.x())
-                    
-                    # Update lines
-                    # Access vLine/hLine from closure or find them
-                    # Better to pass them or use a class, but closure works for simple case
-                    # We need to find the specific vLine/hLine for *this* plot
-                    # Since we are in a loop, 'vLine' and 'hLine' variables are overwritten.
-                    # We must capture them in the closure.
-                    pass
-
-            # To correctly capture vLine/hLine and update the specific plot, 
-            # we need a factory or a separate method. 
-            # Let's use a helper method to attach the crosshair to avoid closure issues.
-            self.add_crosshair(p, vLine, hLine, plot_data, plugin_name)
-
-        self.statusBar().showMessage(f"Analysis complete.")
-
-    def add_crosshair(self, plot, vLine, hLine, plot_data, title_prefix):
-        def mouseMoved(evt):
-            pos = evt[0]
-            if plot.sceneBoundingRect().contains(pos):
-                mousePoint = plot.vb.mapSceneToView(pos)
-                x_val = mousePoint.x()
-                y_val = mousePoint.y()
-                
-                vLine.setPos(x_val)
-                hLine.setPos(y_val)
-                
-                # Format Date
-                date_str = datetime.fromtimestamp(x_val).strftime('%Y-%m-%d')
-                
-                # Build Label
-                label_text = f"<span style='font-size: 12pt; font-weight: bold'>{title_prefix}</span><br>"
-                label_text += f"<span style='color: black'>Date: {date_str}</span><br>"
-                
-                # Find nearest values
-                for ticker, (x_data, y_data) in plot_data.items():
-                    # Find nearest x index
-                    # Assuming x_data is sorted
-                    idx = (np.abs(np.array(x_data) - x_val)).argmin()
-                    if 0 <= idx < len(y_data):
-                        val = y_data[idx]
-                        label_text += f"<span style='color: blue'>{ticker}: {val:.2f}</span><br>"
-                
-                # Update Title (using HTML for formatting)
-                plot.setTitle(label_text)
-
-        self.proxy = pg.SignalProxy(plot.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
-        # Note: We need to keep a reference to SignalProxy, otherwise it gets garbage collected.
-        # Since we have multiple plots, we should store them in a list.
-        if not hasattr(self, 'proxies'):
-            self.proxies = []
-        self.proxies.append(self.proxy)
+        layout_args = {
+            "template": "plotly_white",
+            "hovermode": "x unified"
+        }
+        
+        # Dynamic sizing: Autosize if <= 2 plots, otherwise fixed height per plot
+        if len(selected_analyses) > self.MAX_SUBPLOTS:
+            layout_args["height"] = self.CHART_HEIGHT_PER_MODULE * len(selected_analyses)
+            
+        fig.update_layout(**layout_args)
+        
+        html = fig.to_html(include_plotlyjs='cdn')
+        self.browser.setHtml(html)
+        
+        self.statusBar().showMessage(f"IDLE")

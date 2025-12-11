@@ -3,14 +3,14 @@ from PyQt6.QtGui import QPalette, QStandardItem
 from PyQt6.QtCore import Qt, QEvent
 
 class CheckableComboBox(QComboBox):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, placeholder_text="Select Analysis Modules..."):
         super(CheckableComboBox, self).__init__(parent)
         self.view().pressed.connect(self.handleItemPressed)
         self.setModel(self.model())
         self.view().viewport().installEventFilter(self)
         self.setEditable(True)
         self.lineEdit().setReadOnly(True)
-        self.lineEdit().setPlaceholderText("Select Analysis Modules...")
+        self.lineEdit().setPlaceholderText(placeholder_text)
 
     def eventFilter(self, widget, event):
         if widget == self.view().viewport() and event.type() == QEvent.Type.MouseButtonRelease:

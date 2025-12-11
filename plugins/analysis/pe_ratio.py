@@ -39,7 +39,7 @@ class PERatioPlugin(AnalysisPluginInterface):
         # Drop NaNs
         combined.dropna(subset=['PE_Ratio'], inplace=True)
         
-        results['metrics'] = combined[['PE_Ratio']]
+        # results['metrics'] = combined[['PE_Ratio']]
         results['chart_data'] = combined['PE_Ratio']
         results['summary'] = f"Calculated P/E Ratio for {ticker} using TTM EPS."
         

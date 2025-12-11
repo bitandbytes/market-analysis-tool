@@ -2,4 +2,5 @@ PyQt6
 pandas
 numpy
 seaborn
-matplotlib
+plotly
+PyQt6-WebEngine

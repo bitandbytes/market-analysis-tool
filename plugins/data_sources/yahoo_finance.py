@@ -18,6 +18,23 @@ class YahooFinancePlugin(DataSourceInterface):
         Fetches financial statements from Yahoo Finance.
         Merges Balance Sheet, Income Statement, and Cash Flow.
         """
+        financials = pd.DataFrame(index=market_data.index)
+        
+        try:
+            # Fetch daily eps
+            eps_data = self._fetch_daily_eps(ticker, market_data)
+            if not eps_data.empty:
+                financials['TTM EPS'] = eps_data
+
+            return financials
+        except Exception as e:
+            print(f"Error fetching financials for {ticker}: {e}")
+            return pd.DataFrame()
+
+    def _fetch_daily_eps(self, ticker: str, market_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fetches quartely eps data and interpolates it to daily data
+        """
         try:
             ticker = yf.Ticker(ticker)
             quarterly_eps = ticker.earnings_dates[['Reported EPS']].dropna()
@@ -34,7 +51,7 @@ class YahooFinancePlugin(DataSourceInterface):
             
             # Prepare market data index for alignment (naive and normalized)
             market_index_naive = market_data.index.tz_localize(None).normalize()
-            
+
             # Reindex TTM EPS to the combined index of market dates and report dates
             # This ensures we have the TTM value on the day it was reported
             combined_index = market_index_naive.union(ttm_eps.index).sort_values()
@@ -50,12 +67,9 @@ class YahooFinancePlugin(DataSourceInterface):
             # Restore the original market data index (with timezone if it had one)
             final_eps.index = market_data.index
             
-            # Rename column
-            final_eps.columns = ['TTM EPS']
-            
             return final_eps
         except Exception as e:
-            print(f"Error fetching financials for {ticker}: {e}")
+            print(f"Error fetching TTM EPS for {ticker}: {e}")
             return pd.DataFrame()
 
     def _fetch_market_data(self, ticker: str, period: str = "5y") -> pd.DataFrame:

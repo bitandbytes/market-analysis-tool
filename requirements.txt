@@ -4,3 +4,5 @@ numpy
 seaborn
 plotly
 PyQt6-WebEngine
+yfinance
+lxml

@@ -5,7 +5,7 @@ import seaborn as sns
 from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QComboBox, QListWidget, 
-                             QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox)
+                             QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox, QStyle)
 from PyQt6.QtCore import Qt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -88,19 +88,43 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self.chart_panel)
         splitter.setSizes([300, 900])
 
+        self.statusBar().showMessage(f"Ready")
+
+    def show_warning(self, title, message):
+        self.statusBar().showMessage(f"Warning: {message}")
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(message)
+        # Force the standard warning icon
+        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxWarning)
+        msg.setIconPixmap(icon.pixmap(64, 64))
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.exec()
+
+    def show_error(self, title, message):
+        self.statusBar().showMessage(f"Error: {message}")
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(message)
+        # Force the standard warning icon
+        icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxCritical)
+        msg.setIconPixmap(icon.pixmap(64, 64))
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.exec()
+
     def run_analysis(self):
         self.statusBar().showMessage(f"Please wait...")
         selected_tickers = self.tickers.checkedItems()
         if not selected_tickers:
-            QMessageBox.warning(self, "Input Error", "Please select at least one ticker symbol.")
+            self.show_warning("Input Error", "Please select at least one ticker symbol.")
             return
 
         source_name = self.source_combo.currentText()
         data_source = self.plugin_manager.get_data_source(source_name)
         
         if not data_source:
-             QMessageBox.critical(self, "Error", "Selected data source not found.")
-             return
+            self.show_error("Error", "Selected data source not found.")
+            return
 
         # Get Period
         period_years = self.period_spin.value()
@@ -109,7 +133,7 @@ class MainWindow(QMainWindow):
         # Run Selected Analyses
         selected_analyses = self.analysis_combo.checkedItems()
         if not selected_analyses:
-            QMessageBox.warning(self, "Selection Error", "Please select at least one analysis module.")
+            self.show_warning("Selection Error", "Please select at least one analysis module.")
             return
 
         # Create Plotly Figure with Subplots
@@ -139,8 +163,7 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(f"Error fetching data for {ticker}: {e}")
 
         if not data_cache:
-            QMessageBox.warning(self, "Data Error", "Could not fetch data for any selected tickers.")
-            self.statusBar().showMessage("Ready")
+            self.show_warning("Data Error", "Could not fetch data for any selected tickers.")
             return
 
         for i, plugin_name in enumerate(selected_analyses):
@@ -186,4 +209,4 @@ class MainWindow(QMainWindow):
         html = fig.to_html(include_plotlyjs='cdn')
         self.browser.setHtml(html)
         
-        self.statusBar().showMessage(f"IDLE")
+        self.statusBar().showMessage(f"Ready")

@@ -6,11 +6,15 @@ class PSRatioPlugin(AnalysisPluginInterface):
     def get_name(self) -> str:
         return "P/S Ratio Analysis"
 
+    def get_description(self) -> str:
+        return "Calculated as Price / Sales (TTM). A valuation metric.\nLower values are generally better,\nindicating you are paying less for each dollar of sales generated."
+
     def analyze(self, ticker: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """
         Calculates P/S Ratio.
-        P/S = Market Cap / Total Revenue
         """
+        results = {}
+        
         if financials.empty or market_data.empty:
             return {"error": "Insufficient data"}
 
@@ -31,9 +35,17 @@ class PSRatioPlugin(AnalysisPluginInterface):
         
         shares = financials[shares_col]
         
+        # Determine price column
+        if 'Adj Close' in market_data.columns:
+            price_col = 'Adj Close'
+        elif 'Close' in market_data.columns:
+            price_col = 'Close'
+        else:
+             return {"error": "Price data not found"}
+
         # Align
         combined = pd.DataFrame(index=market_data.index)
-        combined['Close'] = market_data['Close']
+        combined['Close'] = market_data[price_col]
         
         shares_aligned = shares.reindex(market_data.index, method='ffill')
         revenue_aligned = revenue.reindex(market_data.index, method='ffill')
@@ -48,8 +60,7 @@ class PSRatioPlugin(AnalysisPluginInterface):
         
         combined.dropna(subset=['PS_Ratio'], inplace=True)
         
-        return {
-            'metrics': combined[['PS_Ratio']],
-            'chart_data': combined['PS_Ratio'],
-            'summary': f"Calculated P/S Ratio for {ticker}"
-        }
+        results['chart_data'] = combined['PS_Ratio']
+        results['summary'] = f"Calculated P/S Ratio for {ticker}."
+
+        return results

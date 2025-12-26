@@ -6,3 +6,4 @@ plotly
 PyQt6-WebEngine
 yfinance
 lxml
+pyinstaller

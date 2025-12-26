@@ -13,8 +13,12 @@ class PluginManager:
 
     def discover_plugins(self):
         """Discovers and loads plugins from the plugins directory."""
-        # We assume the code is running from the root directory, so we look into plugins
-        base_path = os.path.join(os.getcwd(), "plugins")
+        # Check if running as a frozen application (PyInstaller)
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.join(sys._MEIPASS, "plugins")
+        else:
+            # We assume the code is running from the root directory
+            base_path = os.path.join(os.getcwd(), "plugins")
         
         # Load Data Sources
         ds_path = os.path.join(base_path, "data_sources")

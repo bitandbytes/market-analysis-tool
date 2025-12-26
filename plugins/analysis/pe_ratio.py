@@ -6,7 +6,10 @@ class PERatioPlugin(AnalysisPluginInterface):
     def get_name(self) -> str:
         return "P/E Ratio Analysis"
 
-    def analyze(self, ticker: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
+    def get_description(self) -> str:
+        return "Calculated as Price / EPS (TTM). A valuation metric.\nLower values generally indicate better value,\nsuggesting the stock might be undervalued relative to its earnings."
+
+    def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """
         Calculates P/E Ratio.
         P/E = Market Price / TTM EPS
@@ -39,8 +42,8 @@ class PERatioPlugin(AnalysisPluginInterface):
         # Drop NaNs
         combined.dropna(subset=['PE_Ratio'], inplace=True)
         
-        # results['metrics'] = combined[['PE_Ratio']]
         results['chart_data'] = combined['PE_Ratio']
-        results['summary'] = f"Calculated P/E Ratio for {ticker} using TTM EPS."
+        results['summary'] = f"Calculated P/E Ratio for {ticker_str} using TTM EPS."
         
         return results
+

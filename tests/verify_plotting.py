@@ -14,7 +14,7 @@ from ui.main_window import MainWindow
 
 # Mock plugins and data
 class MockDataSource:
-    def fetch_data(self, ticker, period="1y"):
+    def fetch_data(self, ticker_str: str, period: str = "1y") -> Tuple[pd.DataFrame, pd.DataFrame]:
         dates = pd.date_range(start="2023-01-01", periods=100)
         data = pd.DataFrame({
             "Close": np.random.rand(100) * 100,

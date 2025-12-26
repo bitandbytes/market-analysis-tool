@@ -1,4 +1,5 @@
 import sys
+import os
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -43,8 +44,21 @@ class MainWindow(QMainWindow):
         controls_layout = QVBoxLayout(controls_panel)
         
         # Ticker Input
-        ticker_file = open("ui/tickers.txt", "r")
-        tickers = ticker_file.read().splitlines()
+        tickers = []
+        try:
+            if getattr(sys, 'frozen', False):
+                base_path = sys._MEIPASS
+            else:
+                base_path = os.getcwd()
+            
+            ticker_path = os.path.join(base_path, "ui", "tickers.txt")
+            
+            with open(ticker_path, "r") as ticker_file:
+                 tickers = ticker_file.read().splitlines()
+        except Exception as e:
+            print(f"Error loading tickers: {e}")
+            tickers = ["AAPL", "GOOGL", "MSFT"]
+
         self.tickers = CheckableComboBox(placeholder_text="Select Tickers...")
         self.tickers.addItems(tickers)
         controls_layout.addWidget(self.tickers)
@@ -59,14 +73,18 @@ class MainWindow(QMainWindow):
         controls_layout.addWidget(QLabel("Period (Years):"))
         self.period_spin = QSpinBox()
         self.period_spin.setRange(1, 20)
-        self.period_spin.setValue(5)
+        self.period_spin.setValue(4)
         self.period_spin.setSuffix(" year(s)")
         controls_layout.addWidget(self.period_spin)
 
         # Analysis Selection
         controls_layout.addWidget(QLabel("Analysis Modules:"))
         self.analysis_combo = CheckableComboBox(placeholder_text="Select Analysis Modules...")
-        self.analysis_combo.addItems(self.plugin_manager.get_all_analysis_plugins())
+        # self.analysis_combo.addItems(self.plugin_manager.get_all_analysis_plugins())
+        for plugin_name in self.plugin_manager.get_all_analysis_plugins():
+            plugin = self.plugin_manager.get_analysis_plugin(plugin_name)
+            description = plugin.get_description() if hasattr(plugin, 'get_description') else ""
+            self.analysis_combo.addItem(plugin_name, tooltip=description)
         controls_layout.addWidget(self.analysis_combo)
 
         # Run Button
@@ -150,8 +168,9 @@ class MainWindow(QMainWindow):
         
         # Cache data
         data_cache = {}
-        for ticker in selected_tickers:
+        for ticker_item in selected_tickers:
             try:
+                ticker = ticker_item.split(" -")[0].strip()
                 market_data, financials = data_source.fetch_data(ticker, period=period_str)
                 if not financials.empty and not market_data.empty:
                     data_cache[ticker] = (market_data, financials)

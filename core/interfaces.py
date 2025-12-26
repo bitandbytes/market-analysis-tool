@@ -11,7 +11,7 @@ class DataSourceInterface(ABC):
         pass
 
     @abstractmethod
-    def fetch_data(self, ticker: str, period: str = "5y") -> tuple[pd.DataFrame, pd.DataFrame]:
+    def fetch_data(self, ticker_str: str, period: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Fetches both market data and financials.
         Returns (market_data, financials).
@@ -31,8 +31,15 @@ class AnalysisPluginInterface(ABC):
         """
         Performs analysis on the provided data.
         Returns a dictionary containing:
-        - 'metrics': pd.DataFrame or dict of calculated values
         - 'chart_data': (optional) data suitable for plotting
         - 'summary': str (optional) text summary
+        """
+        pass
+
+    @abstractmethod
+    def get_description(self) -> str:
+        """
+        Returns a description of the analysis module, 
+        including calculation method and interpretation guide.
         """
         pass

@@ -1,64 +1,65 @@
-AAPL
-ABBV
-ABT
-AMAT
-AMD
-AMZN
-APP
-ASML
-AVGO
-AXP
-AZN
-BABA
-BAC
-BRK/A
-BRK/B
-CAT
-CCZ
-COST
-CRM
-CSCO
-CVX
-GE
-GOOG
-GOOGL
-GS
-HD
-HSBC
-IBM
-ISRG
-JNJ
-JPM
-KO
-LLY
-LRCX
-MA
-MCD
-META
-MRK
-MS
-MSFT
-MU
-NFLX
-NVDA
-NVO
-NVS
-ORCL
-PG
-PLTR
-PM
-RTX
-RY
-SAP
-SHEL
-SHOP
-TM
-TMO
-TMUS
-TSLA
-TSM
-UNH
-V
-WFC
-WMT
-XOM
+AAPL - Apple Inc.
+ABBV - AbbVie Inc.
+ABT - Abbott Laboratories
+AMAT - Applied Materials Inc.
+AMD - Advanced Micro Devices Inc.
+AMZN - Amazon.com Inc.
+APP - Applovin Corporation Class A
+ASML - ASML Holding N.V.
+AVGO - Broadcom Inc.
+AXP - American Express Company
+AZN - AstraZeneca PLC
+BABA - Alibaba Group Holding Limited
+BAC - Bank of America Corporation
+BRK/A - Berkshire Hathaway Inc.
+C - Citigroup Inc.
+CAT - Caterpillar Inc.
+CCZ - Comcast Holdings ZONES
+COST - Costco Wholesale Corporation
+CRM - Salesforce Inc.
+CSCO - Cisco Systems Inc.
+CVX - Chevron Corporation
+DIS - Walt Disney Company
+GE - GE Aerospace
+GOOG - Alphabet Inc. Class C Capital Stock
+GOOGL - Alphabet Inc. Class A
+GS - Goldman Sachs Group Inc.
+HD - Home Depot Inc.
+HSBC - HSBC Holdings plc.
+IBM - International Business Machines Corporation
+ISRG - Intuitive Surgical Inc.
+JNJ - Johnson & Johnson
+JPM - JP Morgan Chase & Co.
+KO - Coca-Cola Company
+LLY - Eli Lilly and Company
+LRCX - Lam Research Corporation
+MA - Mastercard Incorporated
+MCD - McDonald's Corporation
+META - Meta Platforms Inc. Class A
+MRK - Merck & Company Inc. (new)
+MS - Morgan Stanley
+MSFT - Microsoft Corporation
+MU - Micron Technology Inc.
+NFLX - Netflix Inc.
+NVDA - NVIDIA Corporation
+NVO - Novo Nordisk A/S
+NVS - Novartis AG
+ORCL - Oracle Corporation
+PG - Procter & Gamble Company (The)
+PLTR - Palantir Technologies Inc. Class A
+PM - Philip Morris International Inc
+RTX - RTX Corporation
+RY - Royal Bank Of Canada
+SAP - SAP  SE ADS
+SHEL - Shell PLC
+SHOP - Shopify Inc. Class A
+TM - Toyota Motor Corporation
+TMO - Thermo Fisher Scientific Inc
+TMUS - T-Mobile US Inc.
+TSLA - Tesla Inc.
+TSM - Taiwan Semiconductor
+UNH - UnitedHealth Group Incorporated (DE)
+V - Visa Inc.
+WFC - Wells Fargo & Company
+WMT - Walmart Inc.
+XOM - Exxon Mobil Corporation

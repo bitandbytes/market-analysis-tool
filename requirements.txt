@@ -1,9 +1,10 @@
-PyQt6
+PySide6
 pandas
 numpy
-seaborn
 plotly
-PyQt6-WebEngine
 yfinance
 lxml
+nuitka
+zstandard
+imageio
 pyinstaller

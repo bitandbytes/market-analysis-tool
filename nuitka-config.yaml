@@ -1,0 +1,23 @@
+- module-name: "seaborn"
+  anti-bloat:
+    - "no_import"
+    
+- module-name: "matplotlib"
+  anti-bloat:
+    - "no_import"
+
+- module-name: "tkinter"
+  anti-bloat:
+    - "no_import"
+
+- module-name: "scipy"
+  anti-bloat:
+    - "no_import"
+
+- module-name: "pandas"
+  options:
+    include_package: true
+
+- module-name: "yfinance"
+  options:
+    include_package: true

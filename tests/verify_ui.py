@@ -1,7 +1,7 @@
 import sys
 import os
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
 
 # Add project root to path
 sys.path.append(os.getcwd())

@@ -2,16 +2,15 @@ import sys
 import os
 import pandas as pd
 import numpy as np
-import seaborn as sns
 from datetime import datetime
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QComboBox, QListWidget, 
                              QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox, QStyle)
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Qt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.colors
-from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from core.plugin_manager import PluginManager
 from ui.checkable_combo_box import CheckableComboBox

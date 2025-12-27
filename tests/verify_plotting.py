@@ -8,9 +8,10 @@ import numpy as np
 # Add project root to path
 sys.path.append(os.getcwd())
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
 from ui.main_window import MainWindow
+from typing import Tuple
 
 # Mock plugins and data
 class MockDataSource:

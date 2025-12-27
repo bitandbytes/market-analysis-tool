@@ -24,7 +24,7 @@ PyInstaller.__main__.run([
     '--hidden-import=yfinance',
     '--hidden-import=pandas',
     '--hidden-import=plotly',
-    '--hidden-import=PyQt6',
+    '--hidden-import=pyside6',
     '--clean',
     '--noconfirm'
 ])

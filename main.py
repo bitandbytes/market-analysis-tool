@@ -4,10 +4,10 @@ import os
 # Add project root to path to allow absolute imports
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 
-from PyQt6.QtGui import QIcon
+from PySide6.QtGui import QIcon
 import os
 
 def main():

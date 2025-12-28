@@ -63,13 +63,27 @@ def verify_ui():
     if checked != expected:
         print(f"FAIL: Expected {expected}, got {checked}")
         return
-    print("PASS: Selection logic works")
+    print("PASS: Selection logic works (A, C)")
+    
+    # 4. Check order persistence
+    # Uncheck A
+    model.item(0).setCheckState(Qt.CheckState.Unchecked)
+    # Check A again
+    model.item(0).setCheckState(Qt.CheckState.Checked)
+    
+    checked_reordered = window.analysis_combo.checkedItems()
+    expected_reordered = ["Analysis C", "Analysis A"]
+    
+    if checked_reordered != expected_reordered:
+        print(f"FAIL: Order check failed. Expected {expected_reordered}, got {checked_reordered}")
+        return
+    print("PASS: Selection order persistence works (C, A)")
     
     # 4. Check text update
     window.analysis_combo.updateText()
     text = window.analysis_combo.lineEdit().text()
-    if text != "Analysis A, Analysis C":
-        print(f"FAIL: Expected text 'Analysis A, Analysis C', got '{text}'")
+    if text != "Analysis C, Analysis A":
+        print(f"FAIL: Expected text 'Analysis C, Analysis A', got '{text}'")
         return
     print("PASS: Text update works")
 

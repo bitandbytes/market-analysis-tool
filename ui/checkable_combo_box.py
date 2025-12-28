@@ -5,8 +5,10 @@ from PySide6.QtCore import Qt, QEvent, QRect, QPoint, QSize, Signal
 class CheckableComboBox(QComboBox):
     def __init__(self, parent=None, placeholder_text="Select Analysis Modules..."):
         super(CheckableComboBox, self).__init__(parent)
+        self._checked_items = []
         self.view().pressed.connect(self.handleItemPressed)
         self.setModel(self.model())
+        self.model().dataChanged.connect(self.onDataChanged)
         self.view().viewport().installEventFilter(self)
         self.setEditable(True)
         self.lineEdit().setReadOnly(True)
@@ -20,7 +22,6 @@ class CheckableComboBox(QComboBox):
                 item.setCheckState(Qt.CheckState.Unchecked)
             else:
                 item.setCheckState(Qt.CheckState.Checked)
-            self.updateText()
             return True
         return super().eventFilter(widget, event)
 
@@ -30,7 +31,19 @@ class CheckableComboBox(QComboBox):
             item.setCheckState(Qt.CheckState.Unchecked)
         else:
             item.setCheckState(Qt.CheckState.Checked)
-        self.updateText()
+
+    def onDataChanged(self, topLeft, bottomRight, roles):
+        if not roles or Qt.ItemDataRole.CheckStateRole in roles:
+            for row in range(topLeft.row(), bottomRight.row() + 1):
+                item = self.model().item(row)
+                text = item.text()
+                if item.checkState() == Qt.CheckState.Checked:
+                    if text not in self._checked_items:
+                        self._checked_items.append(text)
+                else:
+                    if text in self._checked_items:
+                        self._checked_items.remove(text)
+            self.updateText()
 
     def addItem(self, text, userData=None, tooltip=None):
         item = QStandardItem(text)
@@ -47,12 +60,7 @@ class CheckableComboBox(QComboBox):
             self.addItem(text)
 
     def checkedItems(self):
-        checked_items = []
-        for i in range(self.model().rowCount()):
-            item = self.model().item(i)
-            if item.checkState() == Qt.CheckState.Checked:
-                checked_items.append(item.text())
-        return checked_items
+        return list(self._checked_items)
 
     def updateText(self):
         items = self.checkedItems()

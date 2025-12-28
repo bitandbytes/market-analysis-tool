@@ -36,6 +36,18 @@ class YahooFinancePlugin(DataSourceInterface):
             if not revenue_data.empty:
                 financials['Total Revenue'] = revenue_data.iloc[:, 0]
             
+            # Fetch Operating Cash Flow
+            ocf_data = self._fetch_ocf(ticker_str, market_data)
+            if not ocf_data.empty:
+                financials['Operating Cash Flow'] = ocf_data.iloc[:, 0]
+                
+            # Fetch Capital Expenditure
+            capex_data = self._fetch_capex(ticker_str, market_data)
+            if not capex_data.empty:
+                # yfinance often returns CapEx as negative (cash outflow). 
+                # Ensure we handle it appropriately in downstream plugins (fcf_yield.py adds it).
+                financials['Capital Expenditure'] = capex_data.iloc[:, 0]
+            
             return financials
         except Exception as e:
             print(f"Error fetching financials for {ticker_str}: {e}")
@@ -104,119 +116,141 @@ class YahooFinancePlugin(DataSourceInterface):
             return pd.DataFrame()
 
     def _fetch_shares(self, ticker_str: str, market_data: pd.DataFrame) -> pd.DataFrame:
-        try:
-            ticker = yf.Ticker(ticker_str)
-            
-            # --- 1. Quarterly Data (Precise) ---
-            q_stmt = ticker.quarterly_income_stmt
-            shares_quarterly = pd.Series(dtype=float)
-
-            if q_stmt is not None and not q_stmt.empty:
-                q_stmt = q_stmt.T
-                q_stmt.index = pd.to_datetime(q_stmt.index).tz_localize(None).normalize()
-                q_stmt.sort_index(inplace=True)
-
-                if 'Basic Average Shares' in q_stmt.columns:
-                    shares_quarterly = q_stmt['Basic Average Shares']
-            
-            # --- 2. Annual Data (Fallback) ---
-            a_stmt = ticker.income_stmt
-            shares_annual = pd.Series(dtype=float)
-            
-            if a_stmt is not None and not a_stmt.empty:
-                a_stmt = a_stmt.T
-                a_stmt.index = pd.to_datetime(a_stmt.index).tz_localize(None).normalize()
-                a_stmt.sort_index(inplace=True)
-                
-                if 'Basic Average Shares' in a_stmt.columns:
-                    shares_annual = a_stmt['Basic Average Shares']
-
-            # --- 3. Merge ---
-            if shares_quarterly.empty and shares_annual.empty:
-                 return pd.DataFrame()
-            
-            combined_index = shares_quarterly.index.union(shares_annual.index).sort_values()
-            combined_shares = pd.Series(index=combined_index, dtype=float)
-            
-            combined_shares.update(shares_annual)
-            combined_shares.update(shares_quarterly)
-            
-            # --- 4. Align with Market Data ---
-            market_index_naive = market_data.index.tz_localize(None).normalize()
-            full_index = market_index_naive.union(combined_shares.index).sort_values()
-            
-            aligned_shares = combined_shares.reindex(full_index).ffill().bfill()
-            final_shares = aligned_shares.reindex(market_index_naive)
-            final_shares.index = market_data.index # Restore TZ if any
-            
-            return final_shares.to_frame(name='Basic Average Shares')
-
-        except Exception as e:
-            print(f"Error fetching shares for {ticker_str}: {e}")
-            return pd.DataFrame()
+        """
+        Fetches Basic Average Shares.
+        Uses _fetch_financial_metric with use_rolling_sum=False.
+        """
+        return self._fetch_financial_metric(
+            ticker_str,
+            market_data,
+            metric_keys=['Basic Average Shares'],
+            is_cashflow=False,
+            col_name='Basic Average Shares',
+            use_rolling_sum=False
+        )
 
     def _fetch_revenue(self, ticker_str: str, market_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fetches Total Revenue (TTM).
+        Uses _fetch_financial_metric with use_rolling_sum=True.
+        """
+        return self._fetch_financial_metric(
+            ticker_str,
+            market_data,
+            metric_keys=['Total Revenue'],
+            is_cashflow=False,
+            col_name='Total Revenue',
+            use_rolling_sum=True
+        )
+
+
+    def _fetch_ocf(self, ticker_str: str, market_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fetches Operating Cash Flow data.
+        Tries 'Operating Cash Flow', then 'Total Cash From Operating Activities'.
+        """
+        potential_keys = ['Operating Cash Flow', 'Total Cash From Operating Activities']
+        return self._fetch_financial_metric(
+            ticker_str, 
+            market_data, 
+            metric_keys=potential_keys, 
+            is_cashflow=True,
+            col_name='Operating Cash Flow'
+        )
+
+    def _fetch_capex(self, ticker_str: str, market_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fetches Capital Expenditure data.
+        Tries 'Capital Expenditure', then 'Capital Expenditures'.
+        """
+        potential_keys = ['Capital Expenditure', 'Capital Expenditures']
+        return self._fetch_financial_metric(
+            ticker_str, 
+            market_data, 
+            metric_keys=potential_keys, 
+            is_cashflow=True,
+            col_name='Capital Expenditure'
+        )
+
+    def _fetch_financial_metric(self, ticker_str: str, market_data: pd.DataFrame, metric_keys: list, is_cashflow: bool = False, col_name: str = 'Metric', use_rolling_sum: bool = True) -> pd.DataFrame:
+        """
+        Generic helper to fetch a financial metric from quarterly (TTM) and annual reports.
+        """
         try:
             ticker = yf.Ticker(ticker_str)
             
+            # Select statement type
+            if is_cashflow:
+                q_stmt_raw = ticker.quarterly_cashflow
+                a_stmt_raw = ticker.cashflow
+            else:
+                q_stmt_raw = ticker.quarterly_income_stmt
+                a_stmt_raw = ticker.income_stmt
+                
             # --- 1. Quarterly Data (Precise TTM) ---
-            q_stmt = ticker.quarterly_income_stmt
             ttm_from_quarterly = pd.Series(dtype=float)
             
-            if q_stmt is not None and not q_stmt.empty:
-                q_stmt = q_stmt.T
+            if q_stmt_raw is not None and not q_stmt_raw.empty:
+                q_stmt = q_stmt_raw.T
                 q_stmt.index = pd.to_datetime(q_stmt.index).tz_localize(None).normalize()
                 q_stmt.sort_index(inplace=True)
                 
-                if 'Total Revenue' in q_stmt.columns:
-                    # Calculate TTM: Sum of last 4 quarters
-                    q_rev = q_stmt['Total Revenue']
-                    ttm_from_quarterly = q_rev.rolling(window=4, min_periods=4).sum()
+                # Find valid column
+                valid_key = next((k for k in metric_keys if k in q_stmt.columns), None)
+                
+                if valid_key:
+                    q_metric = q_stmt[valid_key]
+                    if use_rolling_sum:
+                        # Calculate TTM: Sum of last 4 quarters
+                        ttm_from_quarterly = q_metric.rolling(window=4, min_periods=4).sum()
+                    else:
+                        # Use raw quarterly value (e.g. for Shares)
+                        ttm_from_quarterly = q_metric
             
             # --- 2. Annual Data (Fallback History) ---
-            a_stmt = ticker.income_stmt
-            annual_revenue = pd.Series(dtype=float)
+            annual_metric = pd.Series(dtype=float)
             
-            if a_stmt is not None and not a_stmt.empty:
-                a_stmt = a_stmt.T
+            if a_stmt_raw is not None and not a_stmt_raw.empty:
+                a_stmt = a_stmt_raw.T
                 a_stmt.index = pd.to_datetime(a_stmt.index).tz_localize(None).normalize()
                 a_stmt.sort_index(inplace=True)
                 
-                if 'Total Revenue' in a_stmt.columns:
-                    annual_revenue = a_stmt['Total Revenue']
+                valid_key = next((k for k in metric_keys if k in a_stmt.columns), None)
+                
+                if valid_key:
+                    annual_metric = a_stmt[valid_key]
             
             # --- 3. Merge Strategies ---
-            if ttm_from_quarterly.empty and annual_revenue.empty:
+            if ttm_from_quarterly.empty and annual_metric.empty:
                 return pd.DataFrame()
 
             # Combine indices
-            combined_index = ttm_from_quarterly.index.union(annual_revenue.index).sort_values()
+            combined_index = ttm_from_quarterly.index.union(annual_metric.index).sort_values()
             
             # Create combined series
-            # Priority: Use Quarterly TTM if available, else Annual
-            combined_revenue = pd.Series(index=combined_index, dtype=float)
+            combined_series = pd.Series(index=combined_index, dtype=float)
             
             # Fill with Annual first (base layer)
-            combined_revenue.update(annual_revenue)
+            combined_series.update(annual_metric)
             
             # Overlay with Quarterly TTM (higher precision layer)
-            combined_revenue.update(ttm_from_quarterly)
+            combined_series.update(ttm_from_quarterly)
             
             # --- 4. Align with Market Data ---
             market_index_naive = market_data.index.tz_localize(None).normalize()
             
             # Union with market dates to allow forward filling interactions
-            full_index = market_index_naive.union(combined_revenue.index).sort_values()
-            aligned_rev = combined_revenue.reindex(full_index).ffill().bfill()
+            full_index = market_index_naive.union(combined_series.index).sort_values()
+            aligned_metric = combined_series.reindex(full_index).ffill().bfill()
             
             # Filter back to only market days
-            final_rev = aligned_rev.reindex(market_index_naive)
-            final_rev.index = market_data.index # Restore timestamps
+            final_metric = aligned_metric.reindex(market_index_naive)
+            final_metric.index = market_data.index # Restore timestamps
             
-            return final_rev.to_frame(name='Total Revenue')
+            return final_metric.to_frame(name=col_name)
 
         except Exception as e:
-            print(f"Error fetching revenue for {ticker_str}: {e}")
+            print(f"Error fetching {col_name} for {ticker_str}: {e}")
             return pd.DataFrame()
 
 

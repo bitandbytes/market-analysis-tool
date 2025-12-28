@@ -5,13 +5,17 @@ from core.interfaces import AnalysisPluginInterface
 class FCFYieldPlugin(AnalysisPluginInterface):
     def get_name(self) -> str:
         return "FCF Yield Analysis"
+    
+    def get_description(self) -> str:
+        return "Calculates the Free Cash Flow (FCF) Yield,\nwhich represents the ratio of free cash flow\nto market capitalization.\nA higher yield is generally considered better\nas it indicates the company is generating\nmore cash relative to its price."
 
-    def analyze(self, ticker: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
+    def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """
         Calculates FCF Yield.
         FCF = Operating Cash Flow - Capital Expenditure
         FCF Yield = FCF / Market Cap
         """
+        results = {}
         if financials.empty or market_data.empty:
             return {"error": "Insufficient data"}
 
@@ -62,7 +66,12 @@ class FCFYieldPlugin(AnalysisPluginInterface):
         
         # Align
         combined = pd.DataFrame(index=market_data.index)
-        combined['Close'] = market_data['Close']
+        
+        # Use Adj Close if available, else Close
+        if 'Adj Close' in market_data.columns:
+            combined['Close'] = market_data['Adj Close']
+        else:
+            combined['Close'] = market_data['Close']
         
         shares_aligned = shares.reindex(market_data.index, method='ffill')
         fcf_aligned = fcf.reindex(market_data.index, method='ffill')
@@ -72,8 +81,7 @@ class FCFYieldPlugin(AnalysisPluginInterface):
         
         combined.dropna(subset=['FCF_Yield'], inplace=True)
         
-        return {
-            'metrics': combined[['FCF_Yield']],
-            'chart_data': combined['FCF_Yield'],
-            'summary': f"Calculated FCF Yield for {ticker}"
-        }
+        results['chart_data'] = combined['FCF_Yield']
+        results['summary'] = f"Calculated FCF Yield for {ticker_str}."
+        
+        return results

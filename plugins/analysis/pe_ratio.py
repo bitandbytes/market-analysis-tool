@@ -12,6 +12,9 @@ class PERatioPlugin(AnalysisPluginInterface):
                 "suggesting the stock might be undervalued relative\n"\
                 "to its earnings."
 
+    def get_category(self) -> str:
+        return "Valuation Ratios"
+
     def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """
         Calculates P/E Ratio.

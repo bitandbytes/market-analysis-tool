@@ -14,6 +14,9 @@ class FCFYieldPlugin(AnalysisPluginInterface):
                 "as it indicates the company is generating\n"\
                 "more cash relative to its price."
 
+    def get_category(self) -> str:
+        return "Valuation Ratios"
+
     def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """
         Calculates FCF Yield.

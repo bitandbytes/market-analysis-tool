@@ -11,6 +11,9 @@ class PriceHistoryPlugin(AnalysisPluginInterface):
                 "Useful for visualizing the stock's\n"\
                 "absolute price trend over the selected period."
 
+    def get_category(self) -> str:
+        return "General"
+
     def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """
         Returns the daily Closing/Adj Closing price.

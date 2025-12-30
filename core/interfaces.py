@@ -43,3 +43,11 @@ class AnalysisPluginInterface(ABC):
         including calculation method and interpretation guide.
         """
         pass
+
+    @abstractmethod
+    def get_category(self) -> str:
+        """
+        Returns the category of the analysis module for grouping in the UI.
+        Examples: "Valuation Ratios", "Price vs Fundamentals", "General"
+        """
+        pass

@@ -79,11 +79,53 @@ class MainWindow(QMainWindow):
         # Analysis Selection
         controls_layout.addWidget(QLabel("Analysis Modules:"))
         self.analysis_combo = CheckableComboBox(placeholder_text="Select Analysis Modules...")
-        # self.analysis_combo.addItems(self.plugin_manager.get_all_analysis_plugins())
-        for plugin_name in self.plugin_manager.get_all_analysis_plugins():
-            plugin = self.plugin_manager.get_analysis_plugin(plugin_name)
-            description = plugin.get_description() if hasattr(plugin, 'get_description') else ""
-            self.analysis_combo.addItem(plugin_name, tooltip=description)
+        
+        # Dynamic Grouping
+        all_plugins = self.plugin_manager.get_all_analysis_plugins()
+        groups = {}
+        
+        for name in all_plugins:
+            plugin = self.plugin_manager.get_analysis_plugin(name)
+            
+            # Safe access to category (in case of legacy plugins or issues)
+            category = "General"
+            if hasattr(plugin, 'get_category'):
+                try:
+                    category = plugin.get_category()
+                except:
+                    pass
+            
+            if category not in groups:
+                 groups[category] = []
+            groups[category].append((name, plugin))
+            
+        # Define specific order for known categories if desired
+        # Or just sort alphabetically
+        sorted_categories = sorted(groups.keys())
+        
+        # Move "General" to end or specific spot?
+        # Let's just do: Valuation Ratios, Price vs Fundamentals, General (if we want specific order, we can force it)
+        # For now, simple alphabetical or priority list
+        priority_order = ["Price vs Fundamentals", "Valuation Ratios", "General"]
+        
+        # Sort keys based on priority, then alphabet
+        def sort_key(k):
+             if k in priority_order:
+                 return priority_order.index(k)
+             return 999 # Others at end
+
+        sorted_categories = sorted(groups.keys(), key=sort_key)
+
+        for category in sorted_categories:
+            self.analysis_combo.addSeparator(f"{category}")
+            
+            # Sort items within category
+            items = sorted(groups[category], key=lambda x: x[0])
+            
+            for name, plugin in items:
+                 description = plugin.get_description() if hasattr(plugin, 'get_description') else ""
+                 self.analysis_combo.addItem(name, tooltip=description)
+                 
         controls_layout.addWidget(self.analysis_combo)
 
         # Run Button

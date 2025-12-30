@@ -18,24 +18,31 @@ class CheckableComboBox(QComboBox):
         if widget == self.view().viewport() and event.type() == QEvent.Type.MouseButtonRelease:
             index = self.view().indexAt(event.pos())
             item = self.model().item(index.row())
-            if item.checkState() == Qt.CheckState.Checked:
-                item.setCheckState(Qt.CheckState.Unchecked)
-            else:
-                item.setCheckState(Qt.CheckState.Checked)
-            return True
+            if item and item.isEnabled(): # Check if enabled (skip separators)
+                if item.checkState() == Qt.CheckState.Checked:
+                    item.setCheckState(Qt.CheckState.Unchecked)
+                else:
+                    item.setCheckState(Qt.CheckState.Checked)
+                return True
         return super().eventFilter(widget, event)
 
     def handleItemPressed(self, index):
         item = self.model().itemFromIndex(index)
-        if item.checkState() == Qt.CheckState.Checked:
-            item.setCheckState(Qt.CheckState.Unchecked)
-        else:
-            item.setCheckState(Qt.CheckState.Checked)
+        if item.isEnabled(): # Check if enabled
+            if item.checkState() == Qt.CheckState.Checked:
+                item.setCheckState(Qt.CheckState.Unchecked)
+            else:
+                item.setCheckState(Qt.CheckState.Checked)
 
     def onDataChanged(self, topLeft, bottomRight, roles):
         if not roles or Qt.ItemDataRole.CheckStateRole in roles:
             for row in range(topLeft.row(), bottomRight.row() + 1):
                 item = self.model().item(row)
+                
+                # Skip separators (which don't have checkbox flags usually, or we check enabled)
+                if not item.isEnabled(): 
+                    continue
+
                 text = item.text()
                 if item.checkState() == Qt.CheckState.Checked:
                     if text not in self._checked_items:
@@ -54,6 +61,16 @@ class CheckableComboBox(QComboBox):
         self.model().appendRow(item)
         if userData is not None:
             item.setData(userData)
+
+    def addSeparator(self, text):
+        item = QStandardItem(text)
+        item.setFlags(Qt.ItemFlag.NoItemFlags) # Disable everything
+        # Make it look like a header (bold, maybe distinct color)
+        font = item.font()
+        font.setBold(True)
+        item.setFont(font)
+        # item.setBackground(QPalette().mid()) # Optional: Grey background
+        self.model().appendRow(item)
 
     def addItems(self, texts):
         for text in texts:

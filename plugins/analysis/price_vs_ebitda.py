@@ -12,6 +12,9 @@ class PriceVsEBITDAPlugin(AnalysisPluginInterface):
                "start of the period to visualize relative growth\n"\
                "and potential divergence."
 
+    def get_category(self) -> str:
+        return "Price vs Fundamentals"
+
     def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """
         Plots Price and EBITDA (TTM) indexed to 100.

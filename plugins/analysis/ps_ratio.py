@@ -13,6 +13,9 @@ class PSRatioPlugin(AnalysisPluginInterface):
                 "indicating you are paying less for\n"\
                 "each dollar of sales generated."
 
+    def get_category(self) -> str:
+        return "Valuation Ratios"
+
     def analyze(self, ticker: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """
         Calculates P/S Ratio.

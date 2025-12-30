@@ -5,7 +5,8 @@ import numpy as np
 from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QComboBox, QListWidget, 
-                             QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox, QStyle)
+                             QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox, QStyle, QFileDialog)
+from PySide6.QtGui import QPalette, QStandardItem, QFontMetrics, QMouseEvent, QAction
 from PySide6.QtCore import Qt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -33,6 +34,14 @@ class MainWindow(QMainWindow):
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         
+        # --- Menu Bar ---
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu("File")
+        
+        load_tickers_action = QAction("Load Tickers...", self)
+        load_tickers_action.triggered.connect(self.load_tickers_from_file)
+        file_menu.addAction(load_tickers_action)
+        
         # Main Layout: Splitter (Left: Controls, Right: Charts)
         layout = QHBoxLayout(main_widget)
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -59,6 +68,7 @@ class MainWindow(QMainWindow):
             tickers = ["AAPL", "GOOGL", "MSFT"]
 
         self.tickers = CheckableComboBox(placeholder_text="Select Tickers...")
+        self.tickers.setMaxVisibleItems(30)
         self.tickers.addItems(tickers)
         controls_layout.addWidget(self.tickers)
 
@@ -79,6 +89,7 @@ class MainWindow(QMainWindow):
         # Analysis Selection
         controls_layout.addWidget(QLabel("Analysis Modules:"))
         self.analysis_combo = CheckableComboBox(placeholder_text="Select Analysis Modules...")
+        self.analysis_combo.setMaxVisibleItems(15)
         
         # Dynamic Grouping
         all_plugins = self.plugin_manager.get_all_analysis_plugins()
@@ -106,7 +117,7 @@ class MainWindow(QMainWindow):
         # Move "General" to end or specific spot?
         # Let's just do: Valuation Ratios, Price vs Fundamentals, General (if we want specific order, we can force it)
         # For now, simple alphabetical or priority list
-        priority_order = ["Price vs Fundamentals", "Valuation Ratios", "General"]
+        priority_order = ["General", "Price vs Fundamentals", "Valuation Ratios"]
         
         # Sort keys based on priority, then alphabet
         def sort_key(k):
@@ -148,6 +159,33 @@ class MainWindow(QMainWindow):
         splitter.setSizes([300, 900])
 
         self.statusBar().showMessage(f"Ready")
+
+    def load_tickers_from_file(self):
+        file_name, _ = QFileDialog.getOpenFileName(self, "Open Ticker File", "", "Text Files (*.txt);;All Files (*)")
+        if file_name:
+            try:
+                with open(file_name, 'r') as f:
+                    content = f.read()
+                    
+                # Parse tickers: split by newlines, strip whitespace, remove empty
+                new_tickers = [line.strip() for line in content.splitlines() if line.strip()]
+                
+                if new_tickers:
+                    # Update the ComboBox
+                    # We want to clear existing or append? 
+                    # User request: "The current file will still stay as the default one."
+                    # This usually means on app start it loads default. Here we are loading a NEW file.
+                    # Usually "Open" implies replace current list.
+                    self.tickers.clear()
+                    self.tickers.addItems(new_tickers)
+                    self.statusBar().showMessage(f"Loaded {len(new_tickers)} tickers from {os.path.basename(file_name)}")
+                else:
+                    self.statusBar().showMessage("No valid tickers found in file.")
+                    self.show_warning("Empty File", "No valid tickers found in file.")
+                    
+            except Exception as e:
+                self.statusBar().showMessage(f"Error: {e}")
+                self.show_error("File Error", f"Could not read file: {e}")
 
     def show_warning(self, title, message):
         self.statusBar().showMessage(f"Warning: {message}")

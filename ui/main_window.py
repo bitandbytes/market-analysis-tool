@@ -198,16 +198,30 @@ class MainWindow(QMainWindow):
                     
                     chart_data = results.get('chart_data')
                     if chart_data is not None:
-                         # Add Trace
-                        fig.add_trace(go.Scatter(
-                            x=chart_data.index, 
-                            y=chart_data.values.flatten(),
-                            mode='lines',
-                            name=f"{ticker}",
-                            legendgroup=ticker,
-                            line=dict(color=colors[j % len(colors)]),
-                            showlegend=(i==0)
-                        ), row=i+1, col=1)
+                        # Handle DataFrame (multiple lines) or Series (single line)
+                        if isinstance(chart_data, pd.Series):
+                            chart_data = chart_data.to_frame(name=f"{ticker}")
+                        
+                        # Use slightly different dash styles for different columns if multiple
+                        dash_styles = ['solid', 'dash', 'dot', 'dashdot']
+                        
+                        for col_idx, col_name in enumerate(chart_data.columns):
+                            # Construct label: "Ticker" or "Ticker - Column"
+                            label = f"{ticker}" if len(chart_data.columns) == 1 else f"{ticker} - {col_name}"
+                            
+                            # Add Trace
+                            fig.add_trace(go.Scatter(
+                                x=chart_data.index, 
+                                y=chart_data[col_name],
+                                mode='lines',
+                                name=label,
+                                legendgroup=ticker,
+                                line=dict(
+                                    color=colors[j % len(colors)],
+                                    dash=dash_styles[col_idx % len(dash_styles)]
+                                ),
+                                showlegend=True # (i==0) logic was hiding legends for subsequent traces on multi-plot, let's show all or smart filter
+                            ), row=i+1, col=1)
                 
                 except Exception as e:
                     print(f"Error running {plugin_name} for {ticker}: {e}")

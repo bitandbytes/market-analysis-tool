@@ -7,7 +7,9 @@ class PriceHistoryPlugin(AnalysisPluginInterface):
         return "Price History"
 
     def get_description(self) -> str:
-        return "Plots the daily historical price (Adjusted Close).\nUseful for visualizing the stock's\nabsolute price trend over the selected period."
+        return "Plots the daily historical price (Adjusted Close).\n"\
+                "Useful for visualizing the stock's\n"\
+                "absolute price trend over the selected period."
 
     def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """

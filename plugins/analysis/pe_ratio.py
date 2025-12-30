@@ -7,7 +7,10 @@ class PERatioPlugin(AnalysisPluginInterface):
         return "P/E Ratio Analysis"
 
     def get_description(self) -> str:
-        return "Calculated as Price / EPS (TTM). A valuation metric.\nLower values generally indicate better value,\nsuggesting the stock might be undervalued relative to its earnings."
+        return "Calculated as Price / EPS (TTM). A valuation metric.\n"\
+                "Lower values generally indicate better value,\n"\
+                "suggesting the stock might be undervalued relative\n"\
+                "to its earnings."
 
     def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """

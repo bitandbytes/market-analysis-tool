@@ -47,6 +47,21 @@ class YahooFinancePlugin(DataSourceInterface):
                 # yfinance often returns CapEx as negative (cash outflow). 
                 # Ensure we handle it appropriately in downstream plugins (fcf_yield.py adds it).
                 financials['Capital Expenditure'] = capex_data.iloc[:, 0]
+
+            # Fetch EBITDA
+            ebitda_data = self._fetch_ebitda(ticker_str, market_data)
+            if not ebitda_data.empty:
+                financials['EBITDA'] = ebitda_data.iloc[:, 0]
+
+            # Fetch Total Debt
+            debt_data = self._fetch_total_debt(ticker_str, market_data)
+            if not debt_data.empty:
+                financials['Total Debt'] = debt_data.iloc[:, 0]
+
+            # Fetch Cash
+            cash_data = self._fetch_cash(ticker_str, market_data)
+            if not cash_data.empty:
+                financials['Cash And Cash Equivalents'] = cash_data.iloc[:, 0]
             
             return financials
         except Exception as e:
@@ -124,7 +139,7 @@ class YahooFinancePlugin(DataSourceInterface):
             ticker_str,
             market_data,
             metric_keys=['Basic Average Shares'],
-            is_cashflow=False,
+            statement_type='income',
             col_name='Basic Average Shares',
             use_rolling_sum=False
         )
@@ -138,7 +153,7 @@ class YahooFinancePlugin(DataSourceInterface):
             ticker_str,
             market_data,
             metric_keys=['Total Revenue'],
-            is_cashflow=False,
+            statement_type='income',
             col_name='Total Revenue',
             use_rolling_sum=True
         )
@@ -154,7 +169,7 @@ class YahooFinancePlugin(DataSourceInterface):
             ticker_str, 
             market_data, 
             metric_keys=potential_keys, 
-            is_cashflow=True,
+            statement_type='cashflow',
             col_name='Operating Cash Flow'
         )
 
@@ -168,26 +183,81 @@ class YahooFinancePlugin(DataSourceInterface):
             ticker_str, 
             market_data, 
             metric_keys=potential_keys, 
-            is_cashflow=True,
+            statement_type='cashflow',
             col_name='Capital Expenditure'
         )
 
-    def _fetch_financial_metric(self, ticker_str: str, market_data: pd.DataFrame, metric_keys: list, is_cashflow: bool = False, col_name: str = 'Metric', use_rolling_sum: bool = True) -> pd.DataFrame:
+    def _fetch_ebitda(self, ticker_str: str, market_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fetches EBITDA (TTM or available).
+        Uses Income Statement.
+        """
+        potential_keys = ['EBITDA', 'Normalized EBITDA']
+        return self._fetch_financial_metric(
+            ticker_str,
+            market_data,
+            metric_keys=potential_keys,
+            statement_type='income',
+            col_name='EBITDA',
+            use_rolling_sum=True # EBITDA is a flow metric, TTM makes sense
+        )
+
+    def _fetch_total_debt(self, ticker_str: str, market_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fetches Total Debt.
+        Uses Balance Sheet. Point-in-time, so NO rolling sum.
+        """
+        potential_keys = ['Total Debt']
+        return self._fetch_financial_metric(
+            ticker_str,
+            market_data,
+            metric_keys=potential_keys,
+            statement_type='balance',
+            col_name='Total Debt',
+            use_rolling_sum=False
+        )
+
+    def _fetch_cash(self, ticker_str: str, market_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fetches Cash and Cash Equivalents.
+        Uses Balance Sheet. Point-in-time, so NO rolling sum.
+        """
+        potential_keys = ['Cash And Cash Equivalents']
+        return self._fetch_financial_metric(
+            ticker_str,
+            market_data,
+            metric_keys=potential_keys,
+            statement_type='balance',
+            col_name='Cash And Cash Equivalents',
+            use_rolling_sum=False
+        )
+
+    def _fetch_financial_metric(self, ticker_str: str, market_data: pd.DataFrame, metric_keys: list, statement_type: str, col_name: str = 'Metric', use_rolling_sum: bool = True) -> pd.DataFrame:
         """
         Generic helper to fetch a financial metric from quarterly (TTM) and annual reports.
+        statement_type: 'income', 'balance', 'cashflow'
         """
         try:
             ticker = yf.Ticker(ticker_str)
             
             # Select statement type
-            if is_cashflow:
+            q_stmt_raw = None
+            a_stmt_raw = None
+            
+            if statement_type == 'cashflow':
                 q_stmt_raw = ticker.quarterly_cashflow
                 a_stmt_raw = ticker.cashflow
-            else:
+            elif statement_type == 'balance':
+                q_stmt_raw = ticker.quarterly_balance_sheet
+                a_stmt_raw = ticker.balance_sheet
+            elif statement_type == 'income':
                 q_stmt_raw = ticker.quarterly_income_stmt
                 a_stmt_raw = ticker.income_stmt
+            else:
+                print(f"Invalid statement type: {statement_type}")
+                return pd.DataFrame()
                 
-            # --- 1. Quarterly Data (Precise TTM) ---
+            # --- 1. Quarterly Data (Precise TTM or Point-in-Time) ---
             ttm_from_quarterly = pd.Series(dtype=float)
             
             if q_stmt_raw is not None and not q_stmt_raw.empty:
@@ -204,7 +274,7 @@ class YahooFinancePlugin(DataSourceInterface):
                         # Calculate TTM: Sum of last 4 quarters
                         ttm_from_quarterly = q_metric.rolling(window=4, min_periods=4).sum()
                     else:
-                        # Use raw quarterly value (e.g. for Shares)
+                        # Use raw quarterly value (e.g. for Shares or Balance Sheet items)
                         ttm_from_quarterly = q_metric
             
             # --- 2. Annual Data (Fallback History) ---

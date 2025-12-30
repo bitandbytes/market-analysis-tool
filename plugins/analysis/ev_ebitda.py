@@ -6,12 +6,20 @@ class EVEBITDAPlugin(AnalysisPluginInterface):
     def get_name(self) -> str:
         return "EV/EBITDA Analysis"
 
-    def analyze(self, ticker: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
+    def get_description(self) -> str:
+        return "Calculates EV/EBITDA.\n" \
+               "Lower values are generally considered better\n" \
+               "as they indicate a company might be undervalued.\n" \
+               "EV = Market Cap + Total Debt - Cash & Equivalents\n" \
+               "EBITDA = Operating Income + Depreciation & Amortization"
+
+    def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """
         Calculates EV/EBITDA.
         EV = Market Cap + Total Debt - Cash & Equivalents
         EBITDA = Operating Income + Depreciation & Amortization
         """
+        results = {}
         if financials.empty or market_data.empty:
             return {"error": "Insufficient data"}
 
@@ -70,7 +78,12 @@ class EVEBITDAPlugin(AnalysisPluginInterface):
         # and only Price changes.
         
         combined = pd.DataFrame(index=market_data.index)
-        combined['Close'] = market_data['Close']
+
+        # Use Adj Close if available, else Close
+        if 'Adj Close' in market_data.columns:
+            combined['Close'] = market_data['Adj Close']
+        else:
+            combined['Close'] = market_data['Close']
         
         # Forward fill financial metrics
         shares_aligned = shares.reindex(market_data.index, method='ffill')
@@ -83,9 +96,8 @@ class EVEBITDAPlugin(AnalysisPluginInterface):
         combined['EV_EBITDA'] = combined['EV'] / ebitda_aligned
         
         combined.dropna(subset=['EV_EBITDA'], inplace=True)
+
+        results['chart_data'] = combined['EV_EBITDA']
+        results['summary'] = f"Calculated EV/EBITDA for {ticker_str}"
         
-        return {
-            'metrics': combined[['EV_EBITDA']],
-            'chart_data': combined['EV_EBITDA'],
-            'summary': f"Calculated EV/EBITDA for {ticker}"
-        }
+        return results

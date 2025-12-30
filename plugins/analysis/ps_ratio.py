@@ -7,7 +7,11 @@ class PSRatioPlugin(AnalysisPluginInterface):
         return "P/S Ratio Analysis"
 
     def get_description(self) -> str:
-        return "Calculated as Price / Sales (TTM). A valuation metric.\nLower values are generally better,\nindicating you are paying less for each dollar of sales generated."
+        return "Calculated as Price / Sales (TTM).\n"\
+                "A valuation metric.\n"\
+                "Lower values are generally better,\n"\
+                "indicating you are paying less for\n"\
+                "each dollar of sales generated."
 
     def analyze(self, ticker: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """

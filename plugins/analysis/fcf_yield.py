@@ -7,7 +7,12 @@ class FCFYieldPlugin(AnalysisPluginInterface):
         return "FCF Yield Analysis"
     
     def get_description(self) -> str:
-        return "Calculates the Free Cash Flow (FCF) Yield,\nwhich represents the ratio of free cash flow\nto market capitalization.\nA higher yield is generally considered better\nas it indicates the company is generating\nmore cash relative to its price."
+        return "Calculates the Free Cash Flow (FCF) Yield,\n"\
+                "which represents the ratio of free cash flow\n"\
+                "to market capitalization.\n"\
+                "A higher yield is generally considered better\n"\
+                "as it indicates the company is generating\n"\
+                "more cash relative to its price."
 
     def analyze(self, ticker_str: str, financials: pd.DataFrame, market_data: pd.DataFrame) -> Dict[str, Any]:
         """

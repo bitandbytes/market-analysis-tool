@@ -12,7 +12,7 @@ print("Starting build...")
 
 PyInstaller.__main__.run([
     'main.py',
-    '--name=MarketAnalysisTool',
+    '--name=Market Analysis Tool',
     '--windowed',
     '--onedir',
     '--icon=assets/icon.png',

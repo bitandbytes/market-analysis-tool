@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
 
         self.tickers = CheckableComboBox(placeholder_text="Select Tickers...")
         self.tickers.setMaxVisibleItems(30)
-        self.tickers.addItems(tickers)
+        self._populate_tickers(tickers)
         controls_layout.addWidget(self.tickers)
 
         # Data Source Selection
@@ -159,6 +159,13 @@ class MainWindow(QMainWindow):
         splitter.setSizes([300, 900])
 
         self.statusBar().showMessage(f"Ready")
+    
+    def _populate_tickers(self, tickers):
+        for ticker in tickers:
+            if ticker.startswith("#"):
+                self.tickers.addSeparator(ticker.lstrip("#").lstrip(" "))
+            else:
+                self.tickers.addItem(ticker)
 
     def load_tickers_from_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Ticker File", "", "Text Files (*.txt);;All Files (*)")
@@ -172,12 +179,8 @@ class MainWindow(QMainWindow):
                 
                 if new_tickers:
                     # Update the ComboBox
-                    # We want to clear existing or append? 
-                    # User request: "The current file will still stay as the default one."
-                    # This usually means on app start it loads default. Here we are loading a NEW file.
-                    # Usually "Open" implies replace current list.
                     self.tickers.clear()
-                    self.tickers.addItems(new_tickers)
+                    self._populate_tickers(new_tickers)
                     self.statusBar().showMessage(f"Loaded {len(new_tickers)} tickers from {os.path.basename(file_name)}")
                 else:
                     self.statusBar().showMessage("No valid tickers found in file.")

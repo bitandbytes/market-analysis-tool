@@ -5,8 +5,8 @@ import numpy as np
 from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QComboBox, QListWidget, 
-                             QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox, QStyle, QFileDialog)
-from PySide6.QtGui import QPalette, QStandardItem, QFontMetrics, QMouseEvent, QAction
+                             QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox, QStyle, QFileDialog, QToolBar)
+from PySide6.QtGui import QPalette, QStandardItem, QFontMetrics, QMouseEvent, QAction, QIcon
 from PySide6.QtCore import Qt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -42,14 +42,27 @@ class MainWindow(QMainWindow):
         load_tickers_action.triggered.connect(self.load_tickers_from_file)
         file_menu.addAction(load_tickers_action)
         
+        # --- Toolbar ---
+        toolbar = QToolBar("Main Toolbar")
+        toolbar.setMovable(False)
+        self.addToolBar(toolbar)
+        
+        # Toggle Panel Action (Hamburger Menu)
+        self.toggle_panel_action = QAction("☰", self)
+        self.toggle_panel_action.setToolTip("Toggle Control Panel")
+        self.toggle_panel_action.setCheckable(True)
+        self.toggle_panel_action.setChecked(True)  # Panel visible by default
+        self.toggle_panel_action.triggered.connect(self.toggle_controls_panel)
+        toolbar.addAction(self.toggle_panel_action)
+        
         # Main Layout: Splitter (Left: Controls, Right: Charts)
         layout = QHBoxLayout(main_widget)
         splitter = QSplitter(Qt.Orientation.Horizontal)
         layout.addWidget(splitter)
 
         # --- Left Panel: Controls ---
-        controls_panel = QFrame()
-        controls_layout = QVBoxLayout(controls_panel)
+        self.controls_panel = QFrame()
+        controls_layout = QVBoxLayout(self.controls_panel)
         
         # Ticker Input
         tickers = []
@@ -145,7 +158,7 @@ class MainWindow(QMainWindow):
         controls_layout.addWidget(self.run_btn)
         
         controls_layout.addStretch()
-        splitter.addWidget(controls_panel)
+        splitter.addWidget(self.controls_panel)
 
         # --- Right Panel: Charts ---
         self.chart_panel = QFrame()
@@ -159,6 +172,12 @@ class MainWindow(QMainWindow):
         splitter.setSizes([300, 900])
 
         self.statusBar().showMessage(f"Ready")
+    
+    def toggle_controls_panel(self):
+        """Toggle visibility of the left controls panel."""
+        is_visible = self.controls_panel.isVisible()
+        self.controls_panel.setVisible(not is_visible)
+        self.toggle_panel_action.setChecked(not is_visible)
     
     def _populate_tickers(self, tickers):
         for ticker in tickers:

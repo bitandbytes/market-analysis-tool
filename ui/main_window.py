@@ -5,7 +5,7 @@ import numpy as np
 from datetime import datetime
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QLineEdit, QPushButton, QComboBox, QListWidget, 
-                             QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox, QStyle, QFileDialog, QToolBar)
+                             QListWidgetItem, QMessageBox, QSplitter, QFrame, QSpinBox, QStyle, QFileDialog)
 from PySide6.QtGui import QPalette, QStandardItem, QFontMetrics, QMouseEvent, QAction, QIcon
 from PySide6.QtCore import Qt
 import plotly.graph_objects as go
@@ -42,23 +42,20 @@ class MainWindow(QMainWindow):
         load_tickers_action.triggered.connect(self.load_tickers_from_file)
         file_menu.addAction(load_tickers_action)
         
-        # --- Toolbar ---
-        toolbar = QToolBar("Main Toolbar")
-        toolbar.setMovable(False)
-        self.addToolBar(toolbar)
+        # --- View Menu ---
+        view_menu = menu_bar.addMenu("View")
         
-        # Toggle Panel Action (Hamburger Menu)
-        self.toggle_panel_action = QAction("☰", self)
-        self.toggle_panel_action.setToolTip("Toggle Control Panel")
+        # Toggle Panel Action
+        self.toggle_panel_action = QAction("Show Control Panel", self)
         self.toggle_panel_action.setCheckable(True)
-        self.toggle_panel_action.setChecked(True)  # Panel visible by default
+        self.toggle_panel_action.setChecked(True)
         self.toggle_panel_action.triggered.connect(self.toggle_controls_panel)
-        toolbar.addAction(self.toggle_panel_action)
+        view_menu.addAction(self.toggle_panel_action)
         
         # Main Layout: Splitter (Left: Controls, Right: Charts)
         layout = QHBoxLayout(main_widget)
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        layout.addWidget(splitter)
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        layout.addWidget(self.splitter)
 
         # --- Left Panel: Controls ---
         self.controls_panel = QFrame()
@@ -158,7 +155,7 @@ class MainWindow(QMainWindow):
         controls_layout.addWidget(self.run_btn)
         
         controls_layout.addStretch()
-        splitter.addWidget(self.controls_panel)
+        self.splitter.addWidget(self.controls_panel)
 
         # --- Right Panel: Charts ---
         self.chart_panel = QFrame()
@@ -168,16 +165,34 @@ class MainWindow(QMainWindow):
         self.browser = QWebEngineView()
         self.chart_layout.addWidget(self.browser)
         
-        splitter.addWidget(self.chart_panel)
-        splitter.setSizes([300, 900])
+        self.splitter.addWidget(self.chart_panel)
+        self.splitter.setSizes([300, 900])
+        self.last_controls_width = 300
 
         self.statusBar().showMessage(f"Ready")
     
     def toggle_controls_panel(self):
         """Toggle visibility of the left controls panel."""
-        is_visible = self.controls_panel.isVisible()
-        self.controls_panel.setVisible(not is_visible)
-        self.toggle_panel_action.setChecked(not is_visible)
+        if self.controls_panel.isVisible():
+            self.last_controls_width = self.controls_panel.width()
+            self.controls_panel.hide()
+            self.toggle_panel_action.setChecked(False)
+        else:
+            self.controls_panel.show()
+            self.toggle_panel_action.setChecked(True)
+            
+            # Restore width if needed (QSplitter often handles this, but forcing it ensures good UX)
+            target_width = getattr(self, 'last_controls_width', 300)
+            if target_width < 100: target_width = 300
+            
+            # self.splitter.setSizes([target_width, self.width() - target_width])
+            # For now, let QSplitter handle it or simple show is often enough. 
+            # If we manipulate setSizes, we need to be careful with total width.
+            # Let's try simple show first. User wants "simpler".
+            # Actually, restoring size is good practice.
+            current_sizes = self.splitter.sizes()
+            total = sum(current_sizes)
+            self.splitter.setSizes([target_width, total - target_width])
     
     def _populate_tickers(self, tickers):
         for ticker in tickers:

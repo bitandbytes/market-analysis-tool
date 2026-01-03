@@ -79,6 +79,11 @@ class CheckableComboBox(QComboBox):
     def checkedItems(self):
         return list(self._checked_items)
 
+    def clear(self):
+        self._checked_items = []
+        self.model().removeRows(0, self.model().rowCount())
+        self.hidePopup()
+
     def updateText(self):
         items = self.checkedItems()
         text = ", ".join(items) if items else ""
